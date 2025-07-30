@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Ciclo Menstrual</title>
+    <style>
+        /* --- Reset e Fontes --- */
+        :root {
+            --color-menstruacao: #4C72B0;
+            --color-folicular: #028090; /* Cor atualizada */
+            --color-fertil: #92D050;
+            --color-ovulacao: #8064A2;
+            --color-lutea: #EDB120;
+            --color-tpm: #d9596c;
+            --color-bg: #f8f9fa;
+            --color-surface: #ffffff;
+            --color-text: #212529;
+            --color-text-muted: #6c757d;
+            --color-border: #dee2e6;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --border-radius: 8px;
+        }
+        
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* --- Layout Principal --- */
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            flex-direction: row; /* Layout padrão para telas maiores */
+        }
+
+        .sidebar {
+            width: 380px;
+            background-color: var(--color-surface);
+            padding: 2rem;
+            overflow-y: auto;
+            border-right: 1px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        main {
+            flex-grow: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        /* --- Barra Lateral (Controles) --- */
+        .sidebar-header {
+            margin-bottom: 2rem;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+
+        .sidebar-header p {
+            color: var(--color-text-muted);
+            font-size: 0.9rem;
+        }
+
+        .form-section h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--color-border);
+            padding-bottom: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--color-border);
+            border-radius: var(--border-radius);
+            font-family: inherit;
+            font-size: 0.9rem;
+            background-color: var(--color-bg);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--color-menstruacao);
+            box-shadow: 0 0 0 2px rgba(76, 114, 176, 0.2);
+        }
+
+        .update-button {
+            width: 100%;
+            padding: 0.85rem;
+            margin-top: 2rem;
+            border: none;
+            border-radius: var(--border-radius);
+            background-color: var(--color-menstruacao);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .update-button:hover {
+            background-color: #3c5a8a;
+        }
+
+        /* --- Área do Calendário --- */
+        #calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .month-container {
+            background-color: var(--color-surface);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+        }
+
+        .month-header {
+            font-size: 1.25rem;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            margin-bottom: 0.5rem;
+        }
+
+        .weekday {
+            text-align: center;
+            font-weight: 500;
+            font-size: 0.8rem;
+            color: var(--color-text-muted);
+        }
+
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+
+        .day-cell {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            aspect-ratio: 1 / 1;
+            border-radius: 50%;
+            font-size: 0.875rem;
+            color: var(--color-text);
+            background-color: #e9ecef;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .day-cell.in-range {
+            cursor: default;
+        }
+        
+        .day-cell.today {
+            font-weight: 700;
+            border: 2px solid var(--color-text);
+        }
+        
+        .day-cell.empty {
+            background-color: transparent;
+        }
+        
+        /* --- Legenda --- */
+        #legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 2.5rem;
+            padding: 1rem;
+            background-color: var(--color-surface);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .legend-color {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+        }
+
+        .legend-text {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        /* --- Responsividade (Media Queries) --- */
+        @media (max-width: 992px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+                overflow: auto;
+            }
+            .sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--color-border);
+                height: auto;
+                padding: 1.5rem;
+            }
+            main {
+                padding: 1.5rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            #calendar-grid {
+                grid-template-columns: 1fr;
+            }
+            body {
+                font-size: 14px;
+            }
+            .sidebar, main {
+                padding: 1rem;
+            }
+            .sidebar-header h1 {
+                font-size: 1.5rem;
+            }
+            #legend {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>Ciclo Menstrual</h1>
+                <p>Ajuste os parâmetros para gerar seu calendário personalizado.</p>
+            </div>
+            
+            <form id="cycle-form">
+                <section class="form-section">
+                    <h2>Referência do Ciclo</h2>
+                    <div class="form-group">
+                        <label for="data_referencia">Data de Referência</label>
+                        <input type="date" id="data_referencia" value="2025-07-27">
+                    </div>
+                    <div class="form-group">
+                        <label for="estado_referencia">Fase na Data de Referência</label>
+                        <select id="estado_referencia">
+                            <option value="Menstruação">Menstruação</option>
+                            <option value="Folicular">Folicular</option>
+                            <option value="Ovulação">Ovulação</option>
+                            <option value="TPM" selected>TPM</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="percent_ref">Progresso na Fase (%)</label>
+                        <input type="number" id="percent_ref" value="50" min="0" max="100">
+                    </div>
+                </section>
+
+                <section class="form-section">
+                    <h2>Duração das Fases (dias)</h2>
+                    <div class="form-group">
+                        <label for="dur_ciclo">Ciclo Completo</label>
+                        <input type="number" id="dur_ciclo" value="28" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="dur_menstr">Menstruação</label>
+                        <input type="number" id="dur_menstr" value="5" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="dur_tpm">TPM</label>
+                        <input type="number" id="dur_tpm" value="5" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="dur_lutea">Fase Lútea (Total)</label>
+                        <input type="number" id="dur_lutea" value="14" min="1">
+                    </div>
+                </section>
+
+                <section class="form-section">
+                    <h2>Período Fértil (dias)</h2>
+                    <div class="form-group">
+                        <label for="fertile_before">Dias Férteis (antes da ovulação)</label>
+                        <input type="number" id="fertile_before" value="5" min="0">
+                    </div>
+                     <div class="form-group">
+                        <label for="fertile_after">Dias Férteis (após a ovulação)</label>
+                        <input type="number" id="fertile_after" value="1" min="0">
+                    </div>
+                </section>
+
+                <section class="form-section">
+                    <h2>Visualização do Calendário</h2>
+                    <div class="form-group">
+                        <label for="visao_inicio">Data de Início da Visualização</label>
+                        <input type="date" id="visao_inicio" value="2025-07-01">
+                    </div>
+                    <div class="form-group">
+                        <label for="visao_fim">Data de Fim da Visualização</label>
+                        <input type="date" id="visao_fim" value="2025-10-31">
+                    </div>
+                </section>
+                
+                <button type="button" id="update-btn" class="update-button">Gerar Calendário</button>
+            </form>
+        </aside>
+
+        <main>
+            <div id="calendar-grid"></div>
+            <div id="legend"></div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('cycle-form');
+            const updateBtn = document.getElementById('update-btn');
+            
+            function generateCalendar() {
+                const params = {
+                    data_referencia: document.getElementById('data_referencia').value,
+                    estado_referencia: document.getElementById('estado_referencia').value,
+                    percent_ref: parseFloat(document.getElementById('percent_ref').value),
+                    dur_ciclo: parseInt(document.getElementById('dur_ciclo').value, 10),
+                    dur_menstr: parseInt(document.getElementById('dur_menstr').value, 10),
+                    dur_tpm: parseInt(document.getElementById('dur_tpm').value, 10),
+                    dur_lutea: parseInt(document.getElementById('dur_lutea').value, 10),
+                    fertile_before: parseInt(document.getElementById('fertile_before').value, 10),
+                    fertile_after: parseInt(document.getElementById('fertile_after').value, 10),
+                    visao_inicio: document.getElementById('visao_inicio').value,
+                    visao_fim: document.getElementById('visao_fim').value,
+                };
+                
+                const inicio_fase = {
+                    'Menstruação': 0,
+                    'Folicular': params.dur_menstr,
+                    'Ovulação': params.dur_ciclo - params.dur_lutea,
+                    'TPM': params.dur_ciclo - params.dur_tpm
+                };
+                const dur_fase = {
+                    'Menstruação': params.dur_menstr,
+                    'Folicular': (params.dur_ciclo - params.dur_lutea) - params.dur_menstr,
+                    'Ovulação': 1,
+                    'TPM': params.dur_tpm
+                };
+                inicio_fase['Lútea'] = inicio_fase['Ovulação'] + dur_fase['Ovulação'];
+                dur_fase['Lútea'] = params.dur_lutea - params.dur_tpm;
+
+                const ref_start = inicio_fase[params.estado_referencia];
+                const ref_length = dur_fase[params.estado_referencia];
+                const offset_meio = ref_start + Math.floor(ref_length * params.percent_ref / 100);
+
+                const fim_men = params.dur_menstr;
+                const off_ov = params.dur_ciclo - params.dur_lutea;
+                const ini_tpm = params.dur_ciclo - params.dur_tpm;
+                
+                const parseDate = (dateString) => {
+                    const [year, month, day] = dateString.split('-').map(Number);
+                    return new Date(Date.UTC(year, month - 1, day));
+                };
+
+                const dataReferenciaUTC = parseDate(params.data_referencia);
+
+                function classificarFase(dt) {
+                    const diffTime = dt.getTime() - dataReferenciaUTC.getTime();
+                    const delta = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    let pos = (delta + offset_meio) % params.dur_ciclo;
+                    if (pos < 0) {
+                        pos += params.dur_ciclo;
+                    }
+
+                    if (pos < fim_men) {
+                        return 'Menstruação';
+                    } else if (pos < off_ov - params.fertile_before) {
+                        return 'Folicular';
+                    } else if (pos >= off_ov - params.fertile_before && pos <= off_ov + params.fertile_after && pos !== off_ov) {
+                        return 'Fértil';
+                    } else if (pos === off_ov) {
+                        return 'Ovulação';
+                    } else if (pos < ini_tpm) {
+                        return 'Lútea';
+                    } else {
+                        return 'TPM';
+                    }
+                }
+
+                const grid = document.getElementById('calendar-grid');
+                const legendContainer = document.getElementById('legend');
+                grid.innerHTML = '';
+                legendContainer.innerHTML = '';
+
+                const phaseInfo = {
+                    'Menstruação': { color: 'var(--color-menstruacao)' },
+                    'Folicular':   { color: 'var(--color-folicular)' },
+                    'Fértil':      { color: 'var(--color-fertil)' },
+                    'Ovulação':    { color: 'var(--color-ovulacao)' },
+                    'Lútea':       { color: 'var(--color-lutea)' },
+                    'TPM':         { color: 'var(--color-tpm)' }
+                };
+
+                const meses_pt = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+                const dias_semana = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+                
+                const visaoInicioUTC = parseDate(params.visao_inicio);
+                const visaoFimUTC = parseDate(params.visao_fim);
+                const hojeUTC = new Date();
+                hojeUTC.setUTCHours(0, 0, 0, 0);
+
+                let currentDate = new Date(visaoInicioUTC);
+
+                while (currentDate.getUTCFullYear() < visaoFimUTC.getUTCFullYear() || 
+                      (currentDate.getUTCFullYear() === visaoFimUTC.getUTCFullYear() && currentDate.getUTCMonth() <= visaoFimUTC.getUTCMonth())) {
+                    
+                    const year = currentDate.getUTCFullYear();
+                    const month = currentDate.getUTCMonth();
+
+                    const monthContainer = document.createElement('div');
+                    monthContainer.className = 'month-container';
+
+                    const monthHeader = document.createElement('h2');
+                    monthHeader.className = 'month-header';
+                    monthHeader.textContent = `${meses_pt[month]} ${year}`;
+                    monthContainer.appendChild(monthHeader);
+
+                    const weekdaysContainer = document.createElement('div');
+                    weekdaysContainer.className = 'weekdays';
+                    dias_semana.forEach(day => {
+                        const weekdayEl = document.createElement('div');
+                        weekdayEl.className = 'weekday';
+                        weekdayEl.textContent = day;
+                        weekdaysContainer.appendChild(weekdayEl);
+                    });
+                    monthContainer.appendChild(weekdaysContainer);
+
+                    const daysGrid = document.createElement('div');
+                    daysGrid.className = 'days-grid';
+
+                    const firstDayOfMonth = new Date(Date.UTC(year, month, 1)).getUTCDay();
+                    for (let i = 0; i < firstDayOfMonth; i++) {
+                        const emptyCell = document.createElement('div');
+                        emptyCell.className = 'day-cell empty';
+                        daysGrid.appendChild(emptyCell);
+                    }
+                    
+                    const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+                    for (let day = 1; day <= daysInMonth; day++) {
+                        const dayDate = new Date(Date.UTC(year, month, day));
+                        
+                        if (dayDate < visaoInicioUTC || dayDate > visaoFimUTC) {
+                            continue; 
+                        }
+                        
+                        const dayCell = document.createElement('div');
+                        dayCell.className = 'day-cell in-range';
+                        dayCell.textContent = day;
+
+                        const fase = classificarFase(dayDate);
+                        dayCell.style.backgroundColor = phaseInfo[fase].color;
+                        dayCell.style.color = '#fff';
+
+                        if (dayDate.getTime() === hojeUTC.getTime()) {
+                             dayCell.classList.add('today');
+                        }
+
+                        daysGrid.appendChild(dayCell);
+                    }
+
+                    monthContainer.appendChild(daysGrid);
+                    grid.appendChild(monthContainer);
+                    
+                    currentDate.setUTCMonth(currentDate.getUTCMonth() + 1, 1);
+                }
+
+                Object.keys(phaseInfo).forEach(fase => {
+                    const item = document.createElement('div');
+                    item.className = 'legend-item';
+
+                    const colorBox = document.createElement('div');
+                    colorBox.className = 'legend-color';
+                    colorBox.style.backgroundColor = phaseInfo[fase].color;
+
+                    const text = document.createElement('span');
+                    text.className = 'legend-text';
+                    text.textContent = fase;
+
+                    item.appendChild(colorBox);
+                    item.appendChild(text);
+                    legendContainer.appendChild(item);
+                });
+            }
+
+            updateBtn.addEventListener('click', generateCalendar);
+            
+            generateCalendar();
+        });
+    </script>
+
+</body>
+</html>
